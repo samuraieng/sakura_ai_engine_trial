@@ -94,14 +94,16 @@ def main():
         if cell_colors[y][x] != color:
             cell_colors[y][x] = color
             dijkstra.step_count += 1
+            # 1px だけでは画面でほとんど見えないため、
+            # 可視化のため中心を元の 1px としつつ 3x3 の点として描画する。
             pygame.draw.rect(
                 cells_surface,
                 color,
                 (
-                    x * CELL_UNIT + WALL_THICKNESS,
-                    y * CELL_UNIT + WALL_THICKNESS,
-                    PATH_THICKNESS,
-                    PATH_THICKNESS,
+                    x * CELL_UNIT + WALL_THICKNESS - 1,
+                    y * CELL_UNIT + WALL_THICKNESS - 1,
+                    PATH_THICKNESS + 2,
+                    PATH_THICKNESS + 2,
                 ),
             )
 
@@ -125,6 +127,9 @@ def main():
                     solving = True
                     recorder.start()
 
+        # このフレームで録画するかどうかのフラグ（描画後に capture するため）
+        capture_this_frame = False
+
         if solving:
             frame_counter += 1
             for _ in range(UPDATE_EVERY_N_STEPS):
@@ -142,12 +147,13 @@ def main():
                         set_cell_color(x, y, COLOR_VISITED)
 
             if frame_counter % CAPTURE_EVERY_N_FRAMES == 0:
-                recorder.capture(screen, force=True)
+                capture_this_frame = True
 
         elif solved and not recorder.saving and not save_done:
-            recorder.capture(screen, force=True)
             save_path = os.path.join(os.path.dirname(__file__), "dijkstra_maze.gif")
             recorder.begin_save(save_path)
+            # solved になったこのフレームの最終状態も録画に含める
+            capture_this_frame = True
 
         elif recorder.saving:
             save_progress = recorder.save_step()
@@ -186,6 +192,10 @@ def main():
             text = big_font.render("Saved! Close window to exit.", True, COLOR_TEXT)
             rect = text.get_rect(center=(LOGICAL_SIZE // 2, LOGICAL_SIZE // 2))
             screen.blit(text, rect)
+
+        # 描画完了後に録画キャプチャ（色付きセルが含まれた状態で保存）
+        if capture_this_frame:
+            recorder.capture(screen, force=True)
 
         pygame.display.flip()
         clock.tick(WINDOW_FPS)
